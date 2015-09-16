@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -13,6 +14,8 @@ using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
+using EnvDTE;
+using EnvDTE80;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using NetDTE.Handlers;
@@ -49,7 +52,9 @@ namespace NetDTE
         public const string PackageGuidString = "51eb2410-ea28-478a-818c-483927b6b3d4";
         private IDictionary<string, RequestHandler> handlers;
         private HttpListener httpListener;
-        private Thread processorThread;
+        private System.Threading.Thread processorThread;
+
+        private DTE dte;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MainPackage"/> class.
@@ -72,9 +77,10 @@ namespace NetDTE
         {
             base.Initialize();
 
+            this.dte = (DTE)this.GetService(typeof(DTE));
             this.handlers = this.DiscoverHandlers();
 
-            this.processorThread = new Thread(new ThreadStart(this.HandleListener));
+            this.processorThread = new System.Threading.Thread(new ThreadStart(this.HandleListener));
             this.processorThread.Start();
         }
 
@@ -82,7 +88,7 @@ namespace NetDTE
         {
             this.httpListener.Stop();
             this.processorThread.Join(5000);
-
+                        
             base.Dispose(disposing);
         }
 
@@ -90,7 +96,7 @@ namespace NetDTE
         {
             return this.GetType().Assembly.GetTypes()
                 .Where(t => t.GetCustomAttribute<RequestHandlerAttribute>() != null)
-                .ToDictionary(t => t.GetCustomAttribute<RequestHandlerAttribute>().baseUrl, t => Activator.CreateInstance(t) as RequestHandler);
+                .ToDictionary(t => t.GetCustomAttribute<RequestHandlerAttribute>().baseUrl, t => Activator.CreateInstance(t, this.dte) as RequestHandler);
         }
 
         void HandleListener()
@@ -108,7 +114,7 @@ namespace NetDTE
             while (this.httpListener.IsListening)
             {
                 var context = this.httpListener.GetContext();
-                var handler = new RequestHandler();
+                var handler = new RequestHandler(this.dte);
 
                 if (this.handlers.ContainsKey(context.Request.RawUrl))
                     handler = this.handlers[context.Request.RawUrl];
