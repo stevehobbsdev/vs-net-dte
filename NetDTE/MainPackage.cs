@@ -40,7 +40,7 @@ namespace NetDTE
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [Guid(MainPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
-    [ProvideAutoLoad(VSConstants.UICONTEXT.NoSolution_string)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionOpening_string)]
     public sealed class MainPackage : Package
     {
         /// <summary>
@@ -78,6 +78,14 @@ namespace NetDTE
             this.processorThread.Start();
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            this.httpListener.Stop();
+            this.processorThread.Join(5000);
+
+            base.Dispose(disposing);
+        }
+
         IDictionary<string, RequestHandler> DiscoverHandlers()
         {
             return this.GetType().Assembly.GetTypes()
@@ -89,6 +97,7 @@ namespace NetDTE
         {
             this.httpListener = new HttpListener();
 
+            // Todo: put the port into configuration
             this.handlers.Keys
                 .Select(k => $"http://localhost:999{k}/")
                 .ToList()
