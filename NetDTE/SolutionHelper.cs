@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using EnvDTE;
 
 namespace NetDTE
@@ -31,14 +27,7 @@ namespace NetDTE
             {
                 if (project.ProjectItems != null && project.ProjectItems.Count > 0)
                 {
-                    foreach (ProjectItem item in project.ProjectItems)
-                    {
-                        var path = (string)item.Properties.Item("FullPath").Value;
-                        if (name.Equals(path, StringComparison.OrdinalIgnoreCase))
-                        {
-                            projectItem = item;
-                        }
-                    }
+                    return SearchProjectItems(project.ProjectItems, name);
                 }
             }
             else
@@ -61,6 +50,38 @@ namespace NetDTE
             }
 
             return projectItem;
+        }
+
+        public static ProjectItem SearchProjectItems(EnvDTE.ProjectItems projectItems, string name)
+        {
+            Func<ProjectItem, bool> testPath = item =>
+            {
+                var path = (string)item.Properties.Item("FullPath").Value;
+                return name.Equals(path, StringComparison.OrdinalIgnoreCase);
+            };
+
+            ProjectItem foundProjectItem = null;
+
+            foreach (ProjectItem item in projectItems)
+            {               
+                if (item.Kind == Constants.vsProjectItemKindPhysicalFolder)
+                {
+                    if (testPath(item))
+                        return item;
+                         
+                    foundProjectItem = SearchProjectItems(item.ProjectItems, name);
+
+                    if (foundProjectItem != null)
+                        break;
+                }
+                else if (item.Kind == Constants.vsProjectItemKindPhysicalFile)
+                {
+                    if (testPath(item))
+                        return item;
+                }
+            }
+
+            return foundProjectItem;
         }
     }
 }
