@@ -16,6 +16,8 @@ namespace NetDTE.Handlers
 
         public override void HandleRequest(HttpListenerContext context)
         {
+            int filesAdded = 0;
+
             if (context.Request.HttpMethod == "PUT" || context.Request.HttpMethod == "POST")
             {
                 using (var reader = new StreamReader(context.Request.InputStream))
@@ -48,6 +50,7 @@ namespace NetDTE.Handlers
                                 }
 
                                 parent.AddFromFile(f);
+                                filesAdded++;
                             });
                             
                         }
@@ -55,6 +58,12 @@ namespace NetDTE.Handlers
                 }
             }
 
+            using(var writer = new StreamWriter(context.Response.OutputStream))
+            {
+                writer.WriteLine($"NetDTE: Updated or registered {filesAdded} file/s with the project");
+            }
+
+            context.Response.ContentType = "text/plain";
             context.Response.OutputStream.Close();
         }
     }

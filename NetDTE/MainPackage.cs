@@ -6,16 +6,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Composition;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using EnvDTE;
-using EnvDTE80;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using NetDTE.Handlers;
@@ -103,9 +100,11 @@ namespace NetDTE
         {
             this.httpListener = new HttpListener();
 
+            int port = 23956;
+            
             // Todo: put the port into configuration
             this.handlers.Keys
-                .Select(k => $"http://localhost:999{k}/")
+                .Select(path => $"http://localhost:{port}{path}/")
                 .ToList()
                 .ForEach(url => this.httpListener.Prefixes.Add(url));
 
@@ -113,13 +112,19 @@ namespace NetDTE
 
             while (this.httpListener.IsListening)
             {
-                var context = this.httpListener.GetContext();
-                var handler = new RequestHandler(this.dte);
+                try
+                {
+                    var context = this.httpListener.GetContext();
+                    var handler = new RequestHandler(this.dte);
 
-                if (this.handlers.ContainsKey(context.Request.RawUrl))
-                    handler = this.handlers[context.Request.RawUrl];
+                    if (this.handlers.ContainsKey(context.Request.RawUrl))
+                        handler = this.handlers[context.Request.RawUrl];
 
-                handler.HandleRequest(context);
+                    handler.HandleRequest(context);
+                }
+                catch(HttpListenerException)
+                {
+                }
             }
         }
 
