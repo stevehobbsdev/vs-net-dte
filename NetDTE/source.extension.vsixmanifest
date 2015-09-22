@@ -5,7 +5,6 @@
     <DisplayName>NetDTE</DisplayName>
     <Description>Empty VSIX Project.</Description>
     <MoreInfo>https://github.com/elkdanger/vs-net-dte</MoreInfo>
-    <License>MIT</License>
   </Metadata>
   <Installation>
     <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[14.0]" />
