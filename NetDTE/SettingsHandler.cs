@@ -36,7 +36,7 @@ namespace NetDTE
 
                         if (packageFile.notifyDte != null)
                         {
-                            if (packageFile.port != null)
+                            if (packageFile.notifyDte.port != null)
                                 settings.Port = packageFile.notifyDte.port;
                         }
                     }

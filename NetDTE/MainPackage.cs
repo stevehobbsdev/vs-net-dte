@@ -15,6 +15,7 @@ using System.Threading;
 using EnvDTE;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using NetDTE.Handlers;
 
 namespace NetDTE
@@ -43,15 +44,16 @@ namespace NetDTE
     [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string)]
     public sealed class MainPackage : Package
     {
-        /// <summary>
-        /// MainPackage GUID string.
-        /// </summary>
         public const string PackageGuidString = "51eb2410-ea28-478a-818c-483927b6b3d4";
+        public const string OutputWindowGuidString = "938b8f16-a80b-5e17-e61d-e858251e66d0";
+
         private IDictionary<string, RequestHandler> handlers;
         private HttpListener httpListener;
         private System.Threading.Thread processorThread;
 
         private DTE dte;
+        private IVsOutputWindow outWindow;
+        private IVsOutputWindowPane customPane;
 
         public SettingsHandler settings { get; private set; }
 
@@ -76,19 +78,46 @@ namespace NetDTE
         {
             base.Initialize();
 
+            this.InitialiseOutputWindow();
+
             this.dte = (DTE)this.GetService(typeof(DTE));
+
+            WriteLineToOutput($"Loading settings from package file");
             this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
 
             if (settings.IsValid)
             {
+                WriteLineToOutput("Settings loaded");
                 StartListener();
             }
-        }       
+            else
+            {
+                WriteLineToOutput($"No settings were found. Sleeping...");
+            }
+        }
+
+        private void InitialiseOutputWindow()
+        {
+            this.outWindow = Package.GetGlobalService(typeof(SVsOutputWindow)) as IVsOutputWindow;
+
+            // Use e.g. Tools -> Create GUID to make a stable, but unique GUID for your pane.
+            // Also, in a real project, this should probably be a static constant, and not a local variable
+            // http://stackoverflow.com/questions/1094366/how-do-i-write-to-the-visual-studio-output-window-in-my-custom-tool
+            var guid = new Guid(OutputWindowGuidString);
+            var title = "EnvDTE";
+
+            this.outWindow.CreatePane(ref guid, title, 1, 1);
+            
+            outWindow.GetPane(ref guid, out this.customPane);
+        }
 
         protected override void Dispose(bool disposing)
         {
-            this.httpListener.Stop();
-            this.processorThread.Join(5000);
+            if (this.httpListener != null)
+                this.httpListener.Stop();
+
+            if (this.processorThread != null)
+                this.processorThread.Join(5000);
                         
             base.Dispose(disposing);
         }
@@ -112,6 +141,8 @@ namespace NetDTE
                 .ToList()
                 .ForEach(url => this.httpListener.Prefixes.Add(url));
 
+            WriteLineToOutput($"Starting listener on http://localhost:{port}");
+
             this.httpListener.Start();          
 
             while (this.httpListener.IsListening)
@@ -130,7 +161,9 @@ namespace NetDTE
                 {
                 }
             }
-            
+
+            WriteLineToOutput($"Stopping listener");
+
             this.httpListener = null;
         }
 
@@ -151,6 +184,16 @@ namespace NetDTE
             this.httpListener.Stop();
             this.processorThread.Join(5000);
             this.processorThread = null;
+        }
+
+        private void WriteLineToOutput(string message)
+        {
+            if (this.customPane == null) return;
+
+            if (!message.EndsWith("\n"))
+                message = message + "\n";
+
+            this.customPane.OutputString(message);
         }
 
         #endregion

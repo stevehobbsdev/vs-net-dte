@@ -49,6 +49,8 @@ namespace NetDTE.Handlers
                                         parent = sassProjectItem.ProjectItems;
                                 }
 
+
+
                                 parent.AddFromFile(f);
                                 filesAdded++;
                             });
