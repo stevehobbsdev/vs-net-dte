@@ -40,7 +40,7 @@ namespace NetDTE
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [Guid(MainPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
-    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionOpening_string)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string)]
     public sealed class MainPackage : Package
     {
         /// <summary>
@@ -52,6 +52,8 @@ namespace NetDTE
         private System.Threading.Thread processorThread;
 
         private DTE dte;
+
+        public SettingsHandler settings { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MainPackage"/> class.
@@ -75,11 +77,13 @@ namespace NetDTE
             base.Initialize();
 
             this.dte = (DTE)this.GetService(typeof(DTE));
-            this.handlers = this.DiscoverHandlers();
+            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
 
-            this.processorThread = new System.Threading.Thread(new ThreadStart(this.HandleListener));
-            this.processorThread.Start();
-        }
+            if (settings.IsValid)
+            {
+                StartListener();
+            }
+        }       
 
         protected override void Dispose(bool disposing)
         {
@@ -100,7 +104,7 @@ namespace NetDTE
         {
             this.httpListener = new HttpListener();
 
-            int port = 23956;
+            int port = this.settings.Port;
             
             // Todo: put the port into configuration
             this.handlers.Keys
@@ -126,6 +130,27 @@ namespace NetDTE
                 {
                 }
             }
+            
+            this.httpListener = null;
+        }
+
+        private void StartListener()
+        {
+            if (this.processorThread != null) return;
+
+            this.handlers = this.DiscoverHandlers();
+
+            this.processorThread = new System.Threading.Thread(new ThreadStart(this.HandleListener));
+            this.processorThread.Start();
+        }
+
+        private void StopListener()
+        {
+            if (this.processorThread == null) return;
+
+            this.httpListener.Stop();
+            this.processorThread.Join(5000);
+            this.processorThread = null;
         }
 
         #endregion

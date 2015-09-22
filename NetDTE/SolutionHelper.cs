@@ -1,16 +1,23 @@
 ﻿using System;
+using System.Collections.Generic;
 using EnvDTE;
 
 namespace NetDTE
 {
+    public enum SearchType
+    {
+        FullPath,
+        Filename
+    }
+
     internal class SolutionHelper
     {
-        public static ProjectItem FindSolutionItemByName(DTE dte, string name, bool recursive)
+        public static ProjectItem FindSolutionItemByName(DTE dte, string name, bool recursive, SearchType searchType = SearchType.FullPath)
         {
             ProjectItem projectItem = null;
             foreach (Project project in dte.Solution.Projects)
             {
-                projectItem = FindProjectItemInProject(project, name, recursive);
+                projectItem = FindProjectItemInProject(project, name, recursive, searchType);
 
                 if (projectItem != null)
                 {
@@ -19,7 +26,8 @@ namespace NetDTE
             }
             return projectItem;
         }
-        public static ProjectItem FindProjectItemInProject(Project project, string name, bool recursive)
+
+        public static ProjectItem FindProjectItemInProject(Project project, string name, bool recursive, SearchType searchType = SearchType.FullPath)
         {
             ProjectItem projectItem = null;
 
@@ -27,7 +35,7 @@ namespace NetDTE
             {
                 if (project.ProjectItems != null && project.ProjectItems.Count > 0)
                 {
-                    return SearchProjectItems(project.ProjectItems, name);
+                    return SearchProjectItems(project.ProjectItems, name, recursive, searchType);
                 }
             }
             else
@@ -39,7 +47,7 @@ namespace NetDTE
 
                     if (realProject != null)
                     {
-                        projectItem = FindProjectItemInProject(realProject, name, recursive);
+                        projectItem = FindProjectItemInProject(realProject, name, recursive, searchType);
 
                         if (projectItem != null)
                         {
@@ -52,12 +60,23 @@ namespace NetDTE
             return projectItem;
         }
 
-        public static ProjectItem SearchProjectItems(EnvDTE.ProjectItems projectItems, string name)
+        public static ProjectItem SearchProjectItems(EnvDTE.ProjectItems projectItems, string name, bool recursive, SearchType searchType)
         {
             Func<ProjectItem, bool> testPath = item =>
             {
-                var path = (string)item.Properties.Item("FullPath").Value;
-                return name.Equals(path, StringComparison.OrdinalIgnoreCase);
+                //var itemName = $"{item.Name}";
+                //var properties = new Dictionary<string, object>();
+
+                //foreach (Property prop in item.Properties)
+                //{
+                //    properties.Add(prop.Name, prop.Value);
+                //}
+
+                string searchValue = searchType == SearchType.FullPath
+                    ? (string)item.Properties.Item("FullPath").Value
+                    : item.Name;
+
+                return name.Equals(searchValue, StringComparison.OrdinalIgnoreCase);
             };
 
             ProjectItem foundProjectItem = null;
@@ -67,18 +86,18 @@ namespace NetDTE
                 if (item.Kind == Constants.vsProjectItemKindPhysicalFolder)
                 {
                     if (testPath(item))
-                        return item;
-                         
-                    foundProjectItem = SearchProjectItems(item.ProjectItems, name);
-
-                    if (foundProjectItem != null)
-                        break;
+                        foundProjectItem = item;
+                    else if (recursive)
+                        foundProjectItem = SearchProjectItems(item.ProjectItems, name, recursive, searchType);
                 }
                 else if (item.Kind == Constants.vsProjectItemKindPhysicalFile)
                 {
                     if (testPath(item))
-                        return item;
+                        foundProjectItem = item;
                 }
+
+                if (foundProjectItem != null)
+                    break;
             }
 
             return foundProjectItem;
