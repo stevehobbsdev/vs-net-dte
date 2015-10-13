@@ -106,7 +106,11 @@ namespace NetDTE
             ProjectItem foundProjectItem = null;
 
             foreach (ProjectItem item in projectItems)
-            {               
+            {
+                // Exit immediately if this is the node_modules folder
+                if (item.Name == "node_modules")
+                    return null;
+
                 if (item.Kind == Constants.vsProjectItemKindPhysicalFolder)
                 {
                     if (testPath(item))
