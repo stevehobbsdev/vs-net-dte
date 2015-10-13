@@ -8,19 +8,15 @@ namespace NetDTE
 {
     public class AssetCache
     {
-        private Dictionary<string, ProjectItem> files;
-        private readonly IEnumerable<Project> nodeProjects;
+        private Dictionary<string, ProjectItem> files = new Dictionary<string, ProjectItem>();
+        private IEnumerable<Project> nodeProjects = Enumerable.Empty<Project>();
+        private readonly DTE dte;
 
         public IEnumerable<Func<ProjectItem, bool>> Predicates { get; private set; }
 
         public AssetCache(DTE dte)
         {
-            this.nodeProjects = SolutionHelper.FindNodeProjects(dte);
-
-            foreach (Project project in this.nodeProjects)
-            {
-                
-            }
+            this.dte = dte;
 
             this.Predicates = new List<Func<ProjectItem, bool>>
             {
@@ -30,8 +26,13 @@ namespace NetDTE
 
         public void Initialise()
         {
-            this.files = SolutionHelper.GatherFiles(this.nodeProjects.First().ProjectItems, true, item => this.ShouldCache(item))
-                    .ToDictionary(d => MakeKey(d.GetFullPath()).ToLower());
+            this.nodeProjects = SolutionHelper.FindNodeProjects(dte);
+
+            if (this.nodeProjects.Any())
+            {
+                this.files = SolutionHelper.GatherFiles(this.nodeProjects.First().ProjectItems, true, item => this.ShouldCache(item))
+                        .ToDictionary(d => MakeKey(d.GetFullPath()).ToLower());
+            }
         }
 
         public bool ShouldCache(ProjectItem item)

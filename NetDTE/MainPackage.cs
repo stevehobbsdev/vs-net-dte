@@ -42,7 +42,7 @@ namespace NetDTE
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [Guid(MainPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
-    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExists_string)]
     public sealed class MainPackage : Package
     {
         public const string PackageGuidString = "51eb2410-ea28-478a-818c-483927b6b3d4";
@@ -82,6 +82,7 @@ namespace NetDTE
             Logger.Initialise();
             
             this.dte = (DTE)this.GetService(typeof(DTE));
+            AssetCache = new AssetCache(this.dte);
 
             this.dte.Events.SolutionEvents.Opened += Solution_Opened;
             this.dte.Events.SolutionEvents.AfterClosing += Solution_AfterClosed;
@@ -92,24 +93,8 @@ namespace NetDTE
             {
                 this.events.ProjectItemsEvents.ItemAdded += ProjectItemsEvents_ItemAdded;
                 this.events.ProjectItemsEvents.ItemRemoved += ProjectItemsEvents_ItemRemoved;
-                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;
+                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;                
             }           
-
-            AssetCache = new AssetCache(this.dte);
-            AssetCache.Initialise();    
-
-            Logger.WriteLine($"Loading settings from package file");
-            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
-
-            if (settings.IsValid)
-            {
-                Logger.WriteLine("Settings loaded");
-                StartListener();
-            }
-            else
-            {
-                Logger.WriteLine("No settings were found or were not valid. Sleeping...");
-            }
         }
 
         protected override void Dispose(bool disposing)
@@ -195,7 +180,6 @@ namespace NetDTE
             Logger.WriteLine("Listener stopped");
         }
 
-
         private void ProjectItemsEvents_ItemRenamed(ProjectItem projectItem, string oldName)
         {
             AssetCache.Remove(oldName);
@@ -217,7 +201,22 @@ namespace NetDTE
 
         private void Solution_Opened()
         {
-            this.StartListener();
+            Logger.WriteLine("Solution opening..");
+            
+            AssetCache.Initialise();
+
+            Logger.WriteLine($"Loading settings from package file");
+            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
+
+            if (settings.IsValid)
+            {
+                Logger.WriteLine("Settings loaded");
+                StartListener();
+            }
+            else
+            {
+                Logger.WriteLine("No settings were found or were not valid. Sleeping...");
+            }
         }
 
         private void Solution_AfterClosed()
