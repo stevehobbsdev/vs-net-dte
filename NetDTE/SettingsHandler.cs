@@ -20,11 +20,11 @@ namespace NetDTE
             }
 
             var packageFileItem = SolutionHelper.FindSolutionItemByName(dte, "package.json", true, SearchType.Filename);
+            var settings = new SettingsHandler();
 
             if (packageFileItem != null)
             {
                 var path = (string)packageFileItem.Properties.Item("FullPath").Value;
-                var settings = new SettingsHandler();
 
                 using (var fs = new FileStream(path, FileMode.Open))
                 using (var reader = new StreamReader(fs))
@@ -38,10 +38,15 @@ namespace NetDTE
                         {
                             if (packageFile.notifyDte.port != null)
                                 settings.Port = packageFile.notifyDte.port;
+                            else
+                                Logger.WriteLine("port setting for notifyDte not found");
                         }
+                        else
+                            Logger.WriteLine("No notifyDte package element found");
                     }
-                    catch (RuntimeBinderException)
+                    catch (RuntimeBinderException e)
                     {
+                        Logger.WriteLine($"There was an error (${e.GetType().Name}) loading the package file: ${e.Message}");
                     }
 
                     // Primitive validation, will upgrade when there are more settings
@@ -50,8 +55,12 @@ namespace NetDTE
                     return settings;
                 }
             }
+            else
+            {
+                Logger.WriteLine("package.json not found");
+            }
 
-            return null;
+            return settings;
         }
     }
 }
