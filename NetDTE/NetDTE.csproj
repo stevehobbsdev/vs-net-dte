@@ -51,6 +51,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="FileCache.cs" />
     <Compile Include="Handlers\RequestHandler.cs" />
     <Compile Include="Handlers\RequestHandlerAttribute.cs" />
     <Compile Include="Handlers\UpdateFilesRequestHandler.cs" />

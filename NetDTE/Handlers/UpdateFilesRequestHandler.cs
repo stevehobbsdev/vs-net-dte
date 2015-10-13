@@ -33,11 +33,11 @@ namespace NetDTE.Handlers
                     {
                         // Assume for now that all the files being changed are in the same project
                         var filePath = $"{Path.GetDirectoryName(files.First())}\\";
-                        var projectItem = SolutionHelper.FindProjectItemInProjects(this.nodeProjects, filePath, true);
-                        var project = projectItem.ContainingProject;
+                        //var projectItem = SolutionHelper.FindProjectItemInProjects(this.nodeProjects, filePath, true);
+                        var project = this.nodeProjects.First();// projectItem.ContainingProject;
 
-                        if (projectItem != null)
-                        {
+                        //if (projectItem != null)
+                        //{
                             files.ForEach(f =>
                             {
                                 ProjectItems parent = project.ProjectItems;
@@ -47,7 +47,7 @@ namespace NetDTE.Handlers
                                 if (Path.GetExtension(f) == ".css")
                                 {
                                     var sassPath = $"{Path.Combine(Path.GetDirectoryName(f), Path.GetFileNameWithoutExtension(f))}.scss";
-                                    var sassProjectItem = SolutionHelper.FindProjectItemInProject(project, sassPath, true);
+                                    var sassProjectItem = MainPackage.FileCache.Lookup(sassPath);  //  SolutionHelper.FindProjectItemInProject(project, sassPath, true);
 
                                     if (sassProjectItem != null)
                                         parent = sassProjectItem.ProjectItems;
@@ -57,7 +57,7 @@ namespace NetDTE.Handlers
                                 filesAdded++;
                             });
                             
-                        }
+                        //}
                     }
                 }
             }

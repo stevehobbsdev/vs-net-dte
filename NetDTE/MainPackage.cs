@@ -54,6 +54,8 @@ namespace NetDTE
 
         public SettingsHandler settings { get; private set; }
 
+        public static FileCache FileCache { get; private set; }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="MainPackage"/> class.
         /// </summary>
@@ -80,7 +82,10 @@ namespace NetDTE
             this.dte = (DTE)this.GetService(typeof(DTE));
 
             this.dte.Events.SolutionEvents.Opened += Solution_Opened;
-            this.dte.Events.SolutionEvents.AfterClosing += Solution_AfterClosed;
+            this.dte.Events.SolutionEvents.AfterClosing += Solution_AfterClosed;           
+
+            FileCache = new FileCache(this.dte);
+            FileCache.SetupCache();    
 
             Logger.WriteLine($"Loading settings from package file");
             this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);

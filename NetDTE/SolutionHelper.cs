@@ -130,5 +130,20 @@ namespace NetDTE
 
             return foundProjectItem;
         }
+
+        public static IEnumerable<ProjectItem> GatherFiles(ProjectItems items, bool recursive, Func<ProjectItem, bool> predicate)
+        {
+            foreach (ProjectItem item in items)
+            {
+                if (item.Kind == Constants.vsProjectItemKindPhysicalFolder && recursive)
+                    foreach (ProjectItem innerItem in GatherFiles(item.ProjectItems, recursive, predicate))
+                        yield return innerItem;
+                else if (item.Kind == Constants.vsProjectItemKindPhysicalFile)
+                {
+                    if (predicate(item))
+                        yield return item;
+                }
+            }            
+        }
     }
 }
