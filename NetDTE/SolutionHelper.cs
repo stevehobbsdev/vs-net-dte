@@ -97,7 +97,7 @@ namespace NetDTE
             Func<ProjectItem, bool> testPath = item =>
             {
                 string searchValue = searchType == SearchType.FullPath
-                    ? (string)item.Properties.Item("FullPath").Value
+                    ? item.GetFullPath()
                     : item.Name;
 
                 return name.Equals(searchValue, StringComparison.OrdinalIgnoreCase);

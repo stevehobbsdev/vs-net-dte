@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using EnvDTE;
+using EnvDTE80;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -51,10 +52,11 @@ namespace NetDTE
         private System.Threading.Thread processorThread;
 
         private DTE dte;
+        private Events2 events;
 
         public SettingsHandler settings { get; private set; }
 
-        public static FileCache FileCache { get; private set; }
+        public static AssetCache AssetCache { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MainPackage"/> class.
@@ -82,10 +84,19 @@ namespace NetDTE
             this.dte = (DTE)this.GetService(typeof(DTE));
 
             this.dte.Events.SolutionEvents.Opened += Solution_Opened;
-            this.dte.Events.SolutionEvents.AfterClosing += Solution_AfterClosed;           
+            this.dte.Events.SolutionEvents.AfterClosing += Solution_AfterClosed;
 
-            FileCache = new FileCache(this.dte);
-            FileCache.SetupCache();    
+            this.events = this.dte.Events as Events2;
+            
+            if (this.events != null)
+            {
+                this.events.ProjectItemsEvents.ItemAdded += ProjectItemsEvents_ItemAdded;
+                this.events.ProjectItemsEvents.ItemRemoved += ProjectItemsEvents_ItemRemoved;
+                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;
+            }           
+
+            AssetCache = new AssetCache(this.dte);
+            AssetCache.Initialise();    
 
             Logger.WriteLine($"Loading settings from package file");
             this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
@@ -99,16 +110,6 @@ namespace NetDTE
             {
                 Logger.WriteLine("No settings were found or were not valid. Sleeping...");
             }
-        }
-
-        private void Solution_Opened()
-        {
-            this.StartListener();
-        }
-
-        private void Solution_AfterClosed()
-        {            
-            this.StopListener();
         }
 
         protected override void Dispose(bool disposing)
@@ -192,6 +193,39 @@ namespace NetDTE
             this.processorThread = null;
 
             Logger.WriteLine("Listener stopped");
+        }
+
+
+        private void ProjectItemsEvents_ItemRenamed(ProjectItem projectItem, string oldName)
+        {
+            AssetCache.Remove(oldName);
+
+            if (AssetCache.ShouldCache(projectItem))
+                AssetCache.Add(projectItem);
+        }
+
+        private void ProjectItemsEvents_ItemRemoved(ProjectItem projectItem)
+        {
+            AssetCache.Remove(projectItem);
+        }
+
+        private void ProjectItemsEvents_ItemAdded(ProjectItem projectItem)
+        {
+            if (AssetCache.ShouldCache(projectItem))
+                AssetCache.Add(projectItem);
+        }
+
+        private void Solution_Opened()
+        {
+            this.StartListener();
+        }
+
+        private void Solution_AfterClosed()
+        {
+            this.StopListener();
+
+            AssetCache.Clear();
+            AssetCache = null;
         }
 
         #endregion

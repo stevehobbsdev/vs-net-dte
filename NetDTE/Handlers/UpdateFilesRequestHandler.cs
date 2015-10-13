@@ -31,38 +31,35 @@ namespace NetDTE.Handlers
 
                     if (files.Any())
                     {
+                        Logger.WriteLine($"Received {files.Count} file/s for processing");
+
                         // Assume for now that all the files being changed are in the same project
                         var filePath = $"{Path.GetDirectoryName(files.First())}\\";
-                        //var projectItem = SolutionHelper.FindProjectItemInProjects(this.nodeProjects, filePath, true);
-                        var project = this.nodeProjects.First();// projectItem.ContainingProject;
+                        var project = this.nodeProjects.First(); // Assume for now that there is only one node project in the solution
 
-                        //if (projectItem != null)
-                        //{
-                            files.ForEach(f =>
+                        files.ForEach(f =>
+                        {
+                            ProjectItems parent = project.ProjectItems;
+
+                            // If this is a css file, find a sass file with the same name and add it as a
+                            // child of that.
+                            if (Path.GetExtension(f) == ".css")
                             {
-                                ProjectItems parent = project.ProjectItems;
+                                var sassPath = $"{Path.Combine(Path.GetDirectoryName(f), Path.GetFileNameWithoutExtension(f))}.scss";
+                                var sassProjectItem = MainPackage.AssetCache.Lookup(sassPath);
 
-                                // If this is a css file, find a sass file with the same name and add it as a
-                                // child of that.
-                                if (Path.GetExtension(f) == ".css")
-                                {
-                                    var sassPath = $"{Path.Combine(Path.GetDirectoryName(f), Path.GetFileNameWithoutExtension(f))}.scss";
-                                    var sassProjectItem = MainPackage.FileCache.Lookup(sassPath);  //  SolutionHelper.FindProjectItemInProject(project, sassPath, true);
+                                if (sassProjectItem != null)
+                                    parent = sassProjectItem.ProjectItems;
+                            }
 
-                                    if (sassProjectItem != null)
-                                        parent = sassProjectItem.ProjectItems;
-                                }
-
-                                parent.AddFromFile(f);
-                                filesAdded++;
-                            });
-                            
-                        //}
+                            parent.AddFromFile(f);
+                            filesAdded++;
+                        });
                     }
                 }
             }
 
-            using(var writer = new StreamWriter(context.Response.OutputStream))
+            using (var writer = new StreamWriter(context.Response.OutputStream))
             {
                 writer.WriteLine($"NetDTE: Updated or registered {filesAdded} file/s with the project");
             }
