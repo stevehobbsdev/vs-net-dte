@@ -32,7 +32,7 @@ namespace NetDTE.Handlers
                     if (files.Any())
                     {
                         // Assume for now that all the files being changed are in the same project
-                        var filePath = Path.GetDirectoryName(files.First()) + "\\";                        
+                        var filePath = $"{Path.GetDirectoryName(files.First())}\\";
                         var projectItem = SolutionHelper.FindProjectItemInProjects(this.nodeProjects, filePath, true);
                         var project = projectItem.ContainingProject;
 
