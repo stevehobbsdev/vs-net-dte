@@ -96,14 +96,14 @@ namespace NetDTE
             }
         }
 
-        private void Solution_AfterClosed()
-        {            
-            this.StopListener();
-        }
-
         private void Solution_Opened()
         {
             this.StartListener();
+        }
+
+        private void Solution_AfterClosed()
+        {            
+            this.StopListener();
         }
 
         protected override void Dispose(bool disposing)
@@ -145,10 +145,12 @@ namespace NetDTE
                 try
                 {
                     var context = this.httpListener.GetContext();
-                    var handler = new RequestHandler(this.dte);
+                    RequestHandler handler;
 
                     if (this.handlers.ContainsKey(context.Request.RawUrl))
                         handler = this.handlers[context.Request.RawUrl];
+                    else
+                        handler = new RequestHandler(this.dte);
 
                     handler.HandleRequest(context);
                 }
