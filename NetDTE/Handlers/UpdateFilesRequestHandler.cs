@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using EnvDTE;
@@ -9,9 +10,12 @@ namespace NetDTE.Handlers
     [RequestHandler("/project/files")]
     class UpdateFilesRequestHandler : RequestHandler
     {
+        private readonly IEnumerable<Project> nodeProjects;
+
         public UpdateFilesRequestHandler(DTE dte)
             : base(dte)
         {
+            this.nodeProjects = SolutionHelper.FindNodeProjects(dte).ToList();
         }
 
         public override void HandleRequest(HttpListenerContext context)
@@ -28,8 +32,8 @@ namespace NetDTE.Handlers
                     if (files.Any())
                     {
                         // Assume for now that all the files being changed are in the same project
-                        var filePath = Path.GetDirectoryName(files.First()) + "\\";
-                        var projectItem = SolutionHelper.FindSolutionItemByName(this.DTE, filePath, true);
+                        var filePath = Path.GetDirectoryName(files.First()) + "\\";                        
+                        var projectItem = SolutionHelper.FindProjectItemInProjects(this.nodeProjects, filePath, true);
                         var project = projectItem.ContainingProject;
 
                         if (projectItem != null)
@@ -48,8 +52,6 @@ namespace NetDTE.Handlers
                                     if (sassProjectItem != null)
                                         parent = sassProjectItem.ProjectItems;
                                 }
-
-
 
                                 parent.AddFromFile(f);
                                 filesAdded++;

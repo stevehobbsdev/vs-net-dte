@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using EnvDTE;
 
 namespace NetDTE
@@ -25,6 +26,37 @@ namespace NetDTE
                 }
             }
             return projectItem;
+        }
+
+        /// <summary>
+        /// Finds projects that have a package.json file in the root
+        /// </summary>
+        public static IEnumerable<Project> FindNodeProjects(DTE dte)
+        {            
+            foreach (Project project in dte.Solution.Projects)
+            {
+                var packageFile = FindProjectItemInProject(project, "package.json", false, SearchType.Filename);
+
+                if (packageFile != null)
+                    yield return project;
+            }
+
+            yield break;
+        }
+
+        public static ProjectItem FindProjectItemInProjects(IEnumerable<Project> projects, string name, bool recursive, SearchType searchType = SearchType.FullPath)
+        {
+            foreach (Project project in projects)
+            {
+                var item = FindProjectItemInProject(project, name, recursive, searchType);
+
+                if (item != null)
+                {
+                    return item;
+                }
+            }
+
+            return null;
         }
 
         public static ProjectItem FindProjectItemInProject(Project project, string name, bool recursive, SearchType searchType = SearchType.FullPath)
@@ -64,14 +96,6 @@ namespace NetDTE
         {
             Func<ProjectItem, bool> testPath = item =>
             {
-                //var itemName = $"{item.Name}";
-                //var properties = new Dictionary<string, object>();
-
-                //foreach (Property prop in item.Properties)
-                //{
-                //    properties.Add(prop.Name, prop.Value);
-                //}
-
                 string searchValue = searchType == SearchType.FullPath
                     ? (string)item.Properties.Item("FullPath").Value
                     : item.Name;
