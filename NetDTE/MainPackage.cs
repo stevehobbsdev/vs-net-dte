@@ -146,6 +146,7 @@ namespace NetDTE
                 this.requestListener = new RequestListener(this.settings.Port, this.dte);
 
                 Logger.WriteLine("Settings loaded");
+                Logger.WriteLine("NOTE: You must reopen the solution for changes to the settings to take effect");
                 StartListener();
             }
             else
