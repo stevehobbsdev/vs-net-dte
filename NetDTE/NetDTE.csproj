@@ -58,6 +58,7 @@
     <Compile Include="Handlers\UpdateFilesRequestHandler.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="MainPackage.cs" />
+    <Compile Include="RequestListener.cs" />
     <Compile Include="SettingsHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SolutionHelper.cs" />

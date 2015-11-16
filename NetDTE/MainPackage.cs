@@ -47,9 +47,7 @@ namespace NetDTE
     {
         public const string PackageGuidString = "51eb2410-ea28-478a-818c-483927b6b3d4";
 
-        private IDictionary<string, RequestHandler> handlers;
-        private HttpListener httpListener;
-        private System.Threading.Thread processorThread;
+        private RequestListener requestListener;
 
         private DTE dte;
         private Events2 events;
@@ -99,85 +97,20 @@ namespace NetDTE
 
         protected override void Dispose(bool disposing)
         {
-            if (this.httpListener != null)
-                this.httpListener.Stop();
-
-            if (this.processorThread != null)
-                this.processorThread.Join(5000);
+            if (this.requestListener != null)
+                this.requestListener.Stop();
                         
             base.Dispose(disposing);
         }
 
-        IDictionary<string, RequestHandler> DiscoverHandlers()
-        {
-            return this.GetType().Assembly.GetTypes()
-                .Where(t => t.GetCustomAttribute<RequestHandlerAttribute>() != null)
-                .ToDictionary(t => t.GetCustomAttribute<RequestHandlerAttribute>().baseUrl, t => Activator.CreateInstance(t, this.dte) as RequestHandler);
-        }
-
-        void HandleListener()
-        {
-            this.httpListener = new HttpListener();
-
-            int port = this.settings.Port;
-            
-            // Todo: put the port into configuration
-            this.handlers.Keys
-                .Select(path => $"http://localhost:{port}{path}/")
-                .ToList()
-                .ForEach(url => this.httpListener.Prefixes.Add(url));
-
-            Logger.WriteLine($"Starting listener on http://localhost:{port}");
-
-            this.httpListener.Start();          
-
-            while (this.httpListener.IsListening)
-            {
-                try
-                {
-                    var context = this.httpListener.GetContext();
-                    RequestHandler handler;
-
-                    if (this.handlers.ContainsKey(context.Request.RawUrl))
-                        handler = this.handlers[context.Request.RawUrl];
-                    else
-                        handler = new RequestHandler(this.dte);
-
-                    handler.HandleRequest(context);
-                }
-                catch(HttpListenerException)
-                {
-                }
-            }
-
-            Logger.WriteLine("Stopping listener");
-
-            this.httpListener = null;
-        }
-
         private void StartListener()
         {
-            if (this.processorThread != null) return;
-
-            Logger.WriteLine("Starting the http listener thread");
-
-            this.handlers = this.DiscoverHandlers();
-
-            this.processorThread = new System.Threading.Thread(new ThreadStart(this.HandleListener));
-            this.processorThread.Start();
+            this.requestListener.Start();
         }
 
         private void StopListener()
         {
-            if (this.processorThread == null) return;
-
-            Logger.WriteLine("Stopping the http listener thread..");
-
-            this.httpListener.Stop();
-            this.processorThread.Join(5000);
-            this.processorThread = null;
-
-            Logger.WriteLine("Listener stopped");
+            this.requestListener.Stop();
         }
 
         private void ProjectItemsEvents_ItemRenamed(ProjectItem projectItem, string oldName)
@@ -206,10 +139,12 @@ namespace NetDTE
             AssetCache.Initialise();
 
             Logger.WriteLine($"Loading settings from package file");
-            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
+            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);            
 
             if (settings.IsValid)
             {
+                this.requestListener = new RequestListener(this.settings.Port, this.dte);
+
                 Logger.WriteLine("Settings loaded");
                 StartListener();
             }
