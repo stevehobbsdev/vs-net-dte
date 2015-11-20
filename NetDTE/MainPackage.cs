@@ -42,7 +42,7 @@ namespace NetDTE
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [Guid(MainPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
-    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExists_string)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string)]
     public sealed class MainPackage : Package
     {
         public const string PackageGuidString = "51eb2410-ea28-478a-818c-483927b6b3d4";
@@ -82,7 +82,8 @@ namespace NetDTE
             this.dte = (DTE)this.GetService(typeof(DTE));
             AssetCache = new AssetCache(this.dte);
 
-            this.dte.Events.SolutionEvents.Opened += Solution_Opened;
+            Logger.WriteLine("Registering solution events");
+            
             this.dte.Events.SolutionEvents.AfterClosing += Solution_AfterClosed;
 
             this.events = this.dte.Events as Events2;
@@ -91,8 +92,31 @@ namespace NetDTE
             {
                 this.events.ProjectItemsEvents.ItemAdded += ProjectItemsEvents_ItemAdded;
                 this.events.ProjectItemsEvents.ItemRemoved += ProjectItemsEvents_ItemRemoved;
-                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;                
+                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;                                                               
             }           
+            else
+            {
+                Logger.WriteLine("Could not register events (object was null). Exiting");
+                return;
+            }
+
+            AssetCache.Initialise();
+
+            Logger.WriteLine($"Loading settings from package file");
+            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
+
+            if (settings.IsValid)
+            {
+                this.requestListener = new RequestListener(this.settings.Port, this.dte);
+
+                Logger.WriteLine("Settings loaded");
+                Logger.WriteLine("NOTE: You must reopen the solution for changes to the settings to take effect");
+                StartListener();
+            }
+            else
+            {
+                Logger.WriteLine("No settings were found or were not valid. Sleeping...");
+            }
         }
 
         protected override void Dispose(bool disposing)
@@ -130,29 +154,6 @@ namespace NetDTE
         {
             if (AssetCache.ShouldCache(projectItem))
                 AssetCache.Add(projectItem);
-        }
-
-        private void Solution_Opened()
-        {
-            Logger.WriteLine("Solution opening..");
-            
-            AssetCache.Initialise();
-
-            Logger.WriteLine($"Loading settings from package file");
-            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);            
-
-            if (settings.IsValid)
-            {
-                this.requestListener = new RequestListener(this.settings.Port, this.dte);
-
-                Logger.WriteLine("Settings loaded");
-                Logger.WriteLine("NOTE: You must reopen the solution for changes to the settings to take effect");
-                StartListener();
-            }
-            else
-            {
-                Logger.WriteLine("No settings were found or were not valid. Sleeping...");
-            }
         }
 
         private void Solution_AfterClosed()
