@@ -43,9 +43,6 @@ namespace NetDTE
     [Guid(MainPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string)]
-    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExists_string)]
-    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionHasMultipleProjects_string)]
-    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionHasSingleProject_string)]
     public sealed class MainPackage : Package
     {
         public const string PackageGuidString = "51eb2410-ea28-478a-818c-483927b6b3d4";
