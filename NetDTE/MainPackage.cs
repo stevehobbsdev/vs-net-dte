@@ -83,8 +83,7 @@ namespace NetDTE
             AssetCache = new AssetCache(this.dte);
 
             Logger.WriteLine("Registering solution events");
-
-            this.dte.Events.SolutionEvents.Opened += Solution_Opened;
+            
             this.dte.Events.SolutionEvents.AfterClosing += Solution_AfterClosed;
 
             this.events = this.dte.Events as Events2;
@@ -93,11 +92,30 @@ namespace NetDTE
             {
                 this.events.ProjectItemsEvents.ItemAdded += ProjectItemsEvents_ItemAdded;
                 this.events.ProjectItemsEvents.ItemRemoved += ProjectItemsEvents_ItemRemoved;
-                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;                
+                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;                                                               
             }           
             else
             {
-                Logger.WriteLine("Could not register events (object was null)");
+                Logger.WriteLine("Could not register events (object was null). Exiting");
+                return;
+            }
+
+            AssetCache.Initialise();
+
+            Logger.WriteLine($"Loading settings from package file");
+            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
+
+            if (settings.IsValid)
+            {
+                this.requestListener = new RequestListener(this.settings.Port, this.dte);
+
+                Logger.WriteLine("Settings loaded");
+                Logger.WriteLine("NOTE: You must reopen the solution for changes to the settings to take effect");
+                StartListener();
+            }
+            else
+            {
+                Logger.WriteLine("No settings were found or were not valid. Sleeping...");
             }
         }
 
@@ -136,29 +154,6 @@ namespace NetDTE
         {
             if (AssetCache.ShouldCache(projectItem))
                 AssetCache.Add(projectItem);
-        }
-
-        private void Solution_Opened()
-        {
-            Logger.WriteLine("Solution opening..");
-            
-            AssetCache.Initialise();
-
-            Logger.WriteLine($"Loading settings from package file");
-            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);            
-
-            if (settings.IsValid)
-            {
-                this.requestListener = new RequestListener(this.settings.Port, this.dte);
-
-                Logger.WriteLine("Settings loaded");
-                Logger.WriteLine("NOTE: You must reopen the solution for changes to the settings to take effect");
-                StartListener();
-            }
-            else
-            {
-                Logger.WriteLine("No settings were found or were not valid. Sleeping...");
-            }
         }
 
         private void Solution_AfterClosed()
