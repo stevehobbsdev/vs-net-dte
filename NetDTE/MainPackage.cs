@@ -85,6 +85,8 @@ namespace NetDTE
             this.dte = (DTE)this.GetService(typeof(DTE));
             AssetCache = new AssetCache(this.dte);
 
+            Logger.WriteLine("Registering solution events");
+
             this.dte.Events.SolutionEvents.Opened += Solution_Opened;
             this.dte.Events.SolutionEvents.AfterClosing += Solution_AfterClosed;
 
@@ -96,6 +98,10 @@ namespace NetDTE
                 this.events.ProjectItemsEvents.ItemRemoved += ProjectItemsEvents_ItemRemoved;
                 this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;                
             }           
+            else
+            {
+                Logger.WriteLine("Could not register events (object was null)");
+            }
         }
 
         protected override void Dispose(bool disposing)
