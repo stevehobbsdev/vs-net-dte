@@ -38,6 +38,11 @@ namespace NetDTE
             get { return this.httpListener.IsListening; }
         }
 
+        /// <summary>
+        /// Gets a value which indicates whether or not the listener thread is running
+        /// </summary>
+        public bool IsRunning { get; private set; }
+
         public void Start()
         {
             if (this.listenerThread != null) return;
@@ -50,6 +55,8 @@ namespace NetDTE
 
         void Listen()
         {
+            this.IsRunning = true;
+
             // Todo: put the port into configuration
             this.handlers.Keys
                 .Select(path => $"http://localhost:{this.Port}{path}/")
@@ -85,6 +92,8 @@ namespace NetDTE
             }
 
             Logger.WriteLine("Stopping listener");
+
+            this.IsRunning = false;
         }
 
         public void Stop()

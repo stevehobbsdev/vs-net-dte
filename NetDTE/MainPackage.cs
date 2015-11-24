@@ -80,43 +80,27 @@ namespace NetDTE
             Logger.Initialise();
             
             this.dte = (DTE)this.GetService(typeof(DTE));
-            AssetCache = new AssetCache(this.dte);
 
             Logger.WriteLine("Registering solution events");
-            
+
+            this.dte.Events.SolutionEvents.Opened += SolutionEvents_Opened;
             this.dte.Events.SolutionEvents.AfterClosing += Solution_AfterClosed;
 
             this.events = this.dte.Events as Events2;
-            
+
             if (this.events != null)
             {
                 this.events.ProjectItemsEvents.ItemAdded += ProjectItemsEvents_ItemAdded;
                 this.events.ProjectItemsEvents.ItemRemoved += ProjectItemsEvents_ItemRemoved;
-                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;                                                               
-            }           
+                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;
+            }
             else
             {
                 Logger.WriteLine("Could not register events (object was null). Exiting");
                 return;
             }
 
-            AssetCache.Initialise();
-
-            Logger.WriteLine($"Loading settings from package file");
-            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
-
-            if (settings.IsValid)
-            {
-                this.requestListener = new RequestListener(this.settings.Port, this.dte);
-
-                Logger.WriteLine("Settings loaded");
-                Logger.WriteLine("NOTE: You must reopen the solution for changes to the settings to take effect");
-                StartListener();
-            }
-            else
-            {
-                Logger.WriteLine("No settings were found or were not valid. Sleeping...");
-            }
+            this.StartListener();
         }
 
         protected override void Dispose(bool disposing)
@@ -129,12 +113,32 @@ namespace NetDTE
 
         private void StartListener()
         {
-            this.requestListener.Start();
+            AssetCache = new AssetCache(this.dte);
+            AssetCache.Initialise();
+
+            Logger.WriteLine($"Loading settings from package file");
+            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
+
+            if (settings.IsValid)
+            {
+                Logger.WriteLine("Settings loaded");
+                Logger.WriteLine("NOTE: You must reopen the solution for changes to the settings to take effect");
+
+                this.requestListener = new RequestListener(this.settings.Port, this.dte);
+                this.requestListener.Start();
+            }
+            else
+            {
+                Logger.WriteLine("No settings were found or were not valid. Sleeping...");
+            }
         }
 
         private void StopListener()
         {
             this.requestListener.Stop();
+
+            AssetCache.Clear();
+            AssetCache = null;
         }
 
         private void ProjectItemsEvents_ItemRenamed(ProjectItem projectItem, string oldName)
@@ -156,12 +160,14 @@ namespace NetDTE
                 AssetCache.Add(projectItem);
         }
 
+        private void SolutionEvents_Opened()
+        {
+            this.StartListener();
+        }
+
         private void Solution_AfterClosed()
         {
             this.StopListener();
-
-            AssetCache.Clear();
-            AssetCache = null;
         }
 
         #endregion
