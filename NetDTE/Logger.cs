@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,14 +31,33 @@ namespace NetDTE
             outWindow.GetPane(ref guid, out customPane);
         }
 
-        public static void WriteLine(string line)
+        public static void WriteLine(string line = null)
         {
             if (customPane == null) return;
 
-            if (!line.EndsWith("\r\n"))
-                line = $"{line}\r\n";
+            if (line != null)
+            {
+                if (!line.EndsWith("\r\n"))
+                    line = $"{line}\r\n";
+            }
 
-            customPane.OutputString(line);
+            customPane.OutputString(line ?? "\r\n");
+        }
+
+        public static void WriteToEventLog(Exception exception)
+        {
+            WriteToEventLog(exception.Message);
+        }
+
+        public static void WriteToEventLog(string message)
+        {
+            string source = "NetDTE";
+            string log = "Application";
+
+            if (!EventLog.SourceExists(source))
+                EventLog.CreateEventSource(source, log);
+
+            EventLog.WriteEntry(source, message, EventLogEntryType.Error);
         }
     }
 }
