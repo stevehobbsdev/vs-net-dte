@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -11,12 +10,9 @@ namespace NetDTE.Handlers
     [RequestHandler("/project/files")]
     class UpdateFilesRequestHandler : RequestHandler
     {
-        private readonly IEnumerable<Project> nodeProjects;
-
         public UpdateFilesRequestHandler(DTE dte)
             : base(dte)
         {
-            this.nodeProjects = SolutionHelper.FindNodeProjects(dte).ToList();
         }
 
         public override void HandleRequest(HttpListenerContext context)
@@ -32,11 +28,13 @@ namespace NetDTE.Handlers
 
                     if (files.Any())
                     {
+                        var nodeProjects = SolutionHelper.FindNodeProjects(this.DTE).ToList();
+
                         Logger.WriteLine($"Received {files.Count} file/s for processing");
 
                         // Assume for now that all the files being changed are in the same project
-                        var filePath = $"{Path.GetDirectoryName(files.First())}\\";
-                        var project = this.nodeProjects.First(); // Assume for now that there is only one node project in the solution
+                        var filePath = $"{ Path.GetDirectoryName(files.First()) }\\";
+                        var project = nodeProjects.First(); // Assume for now that there is only one node project in the solution
 
                         try
                         {
