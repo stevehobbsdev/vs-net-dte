@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using EnvDTE;
+using EnvDTE80;
 using Newtonsoft.Json;
 
 namespace NetDTE.Handlers
@@ -10,7 +11,7 @@ namespace NetDTE.Handlers
     [RequestHandler("/project/files")]
     class UpdateFilesRequestHandler : RequestHandler
     {
-        public UpdateFilesRequestHandler(DTE dte)
+        public UpdateFilesRequestHandler(DTE2 dte)
             : base(dte)
         {
         }

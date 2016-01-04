@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using EnvDTE;
+using EnvDTE80;
 using Microsoft.CSharp.RuntimeBinder;
 using Newtonsoft.Json;
 
@@ -12,7 +13,7 @@ namespace NetDTE
 
         public int Port { get; set; }
 
-        public static SettingsHandler LoadFromNodePackageFile(DTE dte)
+        public static SettingsHandler LoadFromNodePackageFile(DTE2 dte)
         {
             if (dte == null)
             {

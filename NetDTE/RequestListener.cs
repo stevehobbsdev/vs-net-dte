@@ -5,6 +5,7 @@ using System.Net;
 using System.Reflection;
 using System.Threading;
 using EnvDTE;
+using EnvDTE80;
 using NetDTE.Handlers;
 
 namespace NetDTE
@@ -13,10 +14,10 @@ namespace NetDTE
     {
         private readonly HttpListener httpListener;
         private IDictionary<string, RequestHandler> handlers;
-        private readonly DTE dte;
+        private readonly DTE2 dte;
         private System.Threading.Thread listenerThread;
 
-        public RequestListener(int port, DTE dte)
+        public RequestListener(int port, DTE2 dte)
         {
             this.dte = dte;
             this.httpListener = new HttpListener();

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using EnvDTE;
+using EnvDTE80;
 
 namespace NetDTE
 {
@@ -13,7 +14,7 @@ namespace NetDTE
 
     internal class SolutionHelper
     {
-        public static ProjectItem FindSolutionItemByName(DTE dte, string name, bool recursive, SearchType searchType = SearchType.FullPath)
+        public static ProjectItem FindSolutionItemByName(DTE2 dte, string name, bool recursive, SearchType searchType = SearchType.FullPath)
         {
             ProjectItem projectItem = null;
             foreach (Project project in dte.Solution.Projects)
@@ -31,8 +32,8 @@ namespace NetDTE
         /// <summary>
         /// Finds projects that have a package.json file in the root
         /// </summary>
-        public static IEnumerable<Project> FindNodeProjects(DTE dte)
-        {            
+        public static IEnumerable<Project> FindNodeProjects(DTE2 dte)
+        {
             foreach (Project project in dte.Solution.Projects)
             {
                 var packageFile = FindProjectItemInProject(project, "package.json", false, SearchType.Filename);
@@ -47,15 +48,58 @@ namespace NetDTE
         /// <summary>
         /// Finds web projects (projects which have a web.config file)
         /// </summary>
-        public static IEnumerable<Project> FindWebProjects(DTE dte)
+        public static IEnumerable<Project> FindWebProjects(DTE2 dte)
         {
-            foreach(Project project in dte.Solution.Projects)
+            var projects = new List<Project>();
+
+            Action<Project> tryAddValidProject = project =>
             {
                 var configFile = FindProjectItemInProject(project, "web.config", false, SearchType.Filename);
 
                 if (configFile != null)
-                    yield return project;
+                    projects.Add(project);
+            };
+
+            foreach (Project project in dte.Solution.Projects)
+            {
+                if (project.Kind == Constants.vsProjectKindSolutionItems)
+                {
+                    var solutionItemProjects = FindProjectsInSolutionItem(project);
+
+                    foreach (var sProject in solutionItemProjects)
+                    {
+                        tryAddValidProject(sProject);
+                    }
+                }
+                else
+                {
+                    tryAddValidProject(project);
+                }
             }
+
+            return projects;
+        }
+
+        private static IEnumerable<Project> FindProjectsInSolutionItem(Project solutionFolder)
+        {
+            var projects = new List<Project>();
+
+            foreach (ProjectItem item in solutionFolder.ProjectItems)
+            {
+                var subProject = item.SubProject;
+
+                if (subProject == null)
+                    continue; 
+
+                if (subProject.Kind == Constants.vsProjectKindSolutionItems)
+                {
+                    projects.AddRange(FindProjectsInSolutionItem(subProject));
+                }
+                else
+                    projects.Add(subProject);
+            }
+
+            return projects;
         }
 
         public static ProjectItem FindProjectItemInProjects(IEnumerable<Project> projects, string name, bool recursive, SearchType searchType = SearchType.FullPath)
@@ -157,7 +201,7 @@ namespace NetDTE
                     if (predicate(item))
                         yield return item;
                 }
-            }            
+            }
         }
     }
 }

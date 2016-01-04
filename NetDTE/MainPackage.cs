@@ -9,16 +9,11 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Threading;
 using EnvDTE;
 using EnvDTE80;
-using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
-using NetDTE.Handlers;
 
 namespace NetDTE
 {
@@ -50,7 +45,7 @@ namespace NetDTE
 
         private RequestListener requestListener;
 
-        private DTE dte;
+        private DTE2 dte;
         private Events2 events;
         private IList<FileSystemWatcher> watchers = new List<FileSystemWatcher>();
         private SolutionEvents solutionEvents;
@@ -81,11 +76,11 @@ namespace NetDTE
             base.Initialize();
 
             Logger.Initialise();
-            
-            this.dte = (DTE)this.GetService(typeof(DTE));
+
+            this.dte = Package.GetGlobalService(typeof(DTE)) as DTE2;
             this.events = this.dte.Events as Events2;
             this.solutionEvents = this.events.SolutionEvents;
-
+            
             this.solutionEvents.Opened += SolutionEvents_Opened;
             this.solutionEvents.AfterClosing += Solution_AfterClosed;
         }
@@ -181,7 +176,10 @@ namespace NetDTE
                 this.watchers.Add(watcher);
             }
 
-            Logger.WriteLine("Started listening");
+            if (!validProjects.Any())
+            {
+                Logger.WriteLine($"Didn't find any web projects to watch in the current solution.");
+            }
 
             if (this.events != null)
             {
