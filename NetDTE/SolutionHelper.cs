@@ -44,6 +44,20 @@ namespace NetDTE
             yield break;
         }
 
+        /// <summary>
+        /// Finds web projects (projects which have a web.config file)
+        /// </summary>
+        public static IEnumerable<Project> FindWebProjects(DTE dte)
+        {
+            foreach(Project project in dte.Solution.Projects)
+            {
+                var configFile = FindProjectItemInProject(project, "web.config", false, SearchType.Filename);
+
+                if (configFile != null)
+                    yield return project;
+            }
+        }
+
         public static ProjectItem FindProjectItemInProjects(IEnumerable<Project> projects, string name, bool recursive, SearchType searchType = SearchType.FullPath)
         {
             foreach (Project project in projects)
