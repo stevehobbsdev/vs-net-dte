@@ -1,10 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="NetDTE.Steve Hobbs.321d650f-1c4c-4bcc-ba27-b01d1cbeb89d" Version="0.5" Language="en-US" Publisher="Steve Hobbs" />
+    <Identity Id="NetDTE.Steve Hobbs.321d650f-1c4c-4bcc-ba27-b01d1cbeb89d" Version="0.5.1" Language="en-US" Publisher="Steve Hobbs" />
     <DisplayName>NetDTE</DisplayName>
-    <Description xml:space="preserve">Adds files to the active solution through HTTP requests</Description>
-    <MoreInfo>https://github.com/elkdanger/vs-net-dte</MoreInfo>
+    <Description xml:space="preserve">Watches for new CSS and JS files being added to web projects, and automatically adds them to the project under the correct parent.
+
+For use with Web/MVC projects that use a project system (&lt; MVC 6)</Description>
+    <MoreInfo>https://github.com/Orchidsoft/vs-net-dte</MoreInfo>
   </Metadata>
   <Installation>
     <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[14.0]" />
