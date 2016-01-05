@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using EnvDTE;
+using EnvDTE80;
 
 namespace NetDTE
 {
@@ -10,11 +11,11 @@ namespace NetDTE
     {
         private Dictionary<string, ProjectItem> files = new Dictionary<string, ProjectItem>();
         private IEnumerable<Project> nodeProjects = Enumerable.Empty<Project>();
-        private readonly DTE dte;
+        private readonly DTE2 dte;
 
         public IEnumerable<Func<ProjectItem, bool>> Predicates { get; private set; }
 
-        public AssetCache(DTE dte)
+        public AssetCache(DTE2 dte)
         {
             this.dte = dte;
 

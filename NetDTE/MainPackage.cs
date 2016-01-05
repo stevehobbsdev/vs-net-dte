@@ -7,17 +7,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
-using System.Net;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Threading;
 using EnvDTE;
 using EnvDTE80;
-using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
-using NetDTE.Handlers;
 
 namespace NetDTE
 {
@@ -42,15 +38,17 @@ namespace NetDTE
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [Guid(MainPackage.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
-    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string)]
+    [ProvideAutoLoad(UIContextGuids80.NoSolution)]
     public sealed class MainPackage : Package
     {
         public const string PackageGuidString = "51eb2410-ea28-478a-818c-483927b6b3d4";
 
         private RequestListener requestListener;
 
-        private DTE dte;
+        private DTE2 dte;
         private Events2 events;
+        private IList<FileSystemWatcher> watchers = new List<FileSystemWatcher>();
+        private SolutionEvents solutionEvents;
 
         public SettingsHandler settings { get; private set; }
 
@@ -78,64 +76,52 @@ namespace NetDTE
             base.Initialize();
 
             Logger.Initialise();
-            
-            this.dte = (DTE)this.GetService(typeof(DTE));
-            AssetCache = new AssetCache(this.dte);
 
-            Logger.WriteLine("Registering solution events");
-            
-            this.dte.Events.SolutionEvents.AfterClosing += Solution_AfterClosed;
-
+            this.dte = Package.GetGlobalService(typeof(DTE)) as DTE2;
             this.events = this.dte.Events as Events2;
+            this.solutionEvents = this.events.SolutionEvents;
             
-            if (this.events != null)
-            {
-                this.events.ProjectItemsEvents.ItemAdded += ProjectItemsEvents_ItemAdded;
-                this.events.ProjectItemsEvents.ItemRemoved += ProjectItemsEvents_ItemRemoved;
-                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;                                                               
-            }           
-            else
-            {
-                Logger.WriteLine("Could not register events (object was null). Exiting");
-                return;
-            }
-
-            AssetCache.Initialise();
-
-            Logger.WriteLine($"Loading settings from package file");
-            this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
-
-            if (settings.IsValid)
-            {
-                this.requestListener = new RequestListener(this.settings.Port, this.dte);
-
-                Logger.WriteLine("Settings loaded");
-                Logger.WriteLine("NOTE: You must reopen the solution for changes to the settings to take effect");
-                StartListener();
-            }
-            else
-            {
-                Logger.WriteLine("No settings were found or were not valid. Sleeping...");
-            }
+            this.solutionEvents.Opened += SolutionEvents_Opened;
+            this.solutionEvents.AfterClosing += Solution_AfterClosed;
         }
 
-        protected override void Dispose(bool disposing)
-        {
-            if (this.requestListener != null)
-                this.requestListener.Stop();
+        //protected override void Dispose(bool disposing)
+        //{
+        //    if (this.requestListener != null)
+        //        this.requestListener.Stop();
                         
-            base.Dispose(disposing);
-        }
+        //    base.Dispose(disposing);
+        //}
 
-        private void StartListener()
-        {
-            this.requestListener.Start();
-        }
+        //private void StartListener()
+        //{
+        //    AssetCache = new AssetCache(this.dte);
+        //    AssetCache.Initialise();
 
-        private void StopListener()
-        {
-            this.requestListener.Stop();
-        }
+        //    Logger.WriteLine($"Loading settings from package file");
+        //    this.settings = SettingsHandler.LoadFromNodePackageFile(this.dte);
+
+        //    if (settings.IsValid)
+        //    {
+        //        Logger.WriteLine("Settings loaded");
+        //        Logger.WriteLine("NOTE: You must reopen the solution for changes to the settings to take effect");
+
+        //        /*this.requestListener = new RequestListener(this.settings.Port, this.dte);
+        //        this.requestListener.Start();*/
+        //    }
+        //    else
+        //    {
+        //        Logger.WriteLine("No settings were found or were not valid. Sleeping...");
+        //    }
+        //}
+
+        //private void StopListener()
+        //{
+        //    //this.requestListener.Stop();
+
+        //    AssetCache.Clear();
+        //    AssetCache = null;
+        //}
 
         private void ProjectItemsEvents_ItemRenamed(ProjectItem projectItem, string oldName)
         {
@@ -156,12 +142,80 @@ namespace NetDTE
                 AssetCache.Add(projectItem);
         }
 
+        private void SolutionEvents_Opened()
+        {
+            AssetCache = new AssetCache(this.dte);
+            AssetCache.Initialise();
+
+            var validProjects = SolutionHelper.FindWebProjects(this.dte);
+
+            foreach (var project in validProjects)
+            {
+                var directory = Path.Combine(Path.GetDirectoryName(project.FullName), "CDN");
+                var watcher = new FileSystemWatcher(directory, "*.css");
+                var parent = project.ProjectItems;
+
+                watcher.IncludeSubdirectories = true;
+
+                watcher.Created += (sender, args) =>
+                {
+                    ProcessCssFile(parent, args.FullPath);
+                    Logger.WriteLine($"Added { args.Name } to the project");
+                };
+
+                watcher.Changed += (sender, args) =>
+                {
+                    ProcessCssFile(parent, args.FullPath);
+                    Logger.WriteLine($"Processed { args.Name }");
+                };
+
+                watcher.EnableRaisingEvents = true;
+
+                Logger.WriteLine($"Set up a file watcher on { directory }");
+
+                this.watchers.Add(watcher);
+            }
+
+            if (!validProjects.Any())
+            {
+                Logger.WriteLine($"Didn't find any web projects to watch in the current solution.");
+            }
+
+            if (this.events != null)
+            {
+                this.events.ProjectItemsEvents.ItemAdded += ProjectItemsEvents_ItemAdded;
+                this.events.ProjectItemsEvents.ItemRemoved += ProjectItemsEvents_ItemRemoved;
+                this.events.ProjectItemsEvents.ItemRenamed += ProjectItemsEvents_ItemRenamed;
+            }
+            else
+            {
+                Logger.WriteLine("Could not register events (object was null). Exiting");
+                return;
+            }
+        }
+
+        private static void ProcessCssFile(ProjectItems parent, string cssPath)
+        {
+            var sassPath = $"{Path.Combine(Path.GetDirectoryName(cssPath), Path.GetFileNameWithoutExtension(cssPath))}.scss";
+            var sassProjectItem = AssetCache.Lookup(sassPath);
+
+            if (sassProjectItem != null)
+                parent = sassProjectItem.ProjectItems;
+
+            parent.AddFromFile(cssPath);
+        }
+
         private void Solution_AfterClosed()
         {
-            this.StopListener();
+            //this.StopListener();
 
-            AssetCache.Clear();
-            AssetCache = null;
+            foreach (var watcher in this.watchers)
+            {
+                watcher.EnableRaisingEvents = false;
+                watcher.Dispose();
+            }
+
+            this.watchers.Clear();
         }
 
         #endregion

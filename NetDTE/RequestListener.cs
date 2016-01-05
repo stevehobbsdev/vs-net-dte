@@ -5,6 +5,7 @@ using System.Net;
 using System.Reflection;
 using System.Threading;
 using EnvDTE;
+using EnvDTE80;
 using NetDTE.Handlers;
 
 namespace NetDTE
@@ -13,10 +14,10 @@ namespace NetDTE
     {
         private readonly HttpListener httpListener;
         private IDictionary<string, RequestHandler> handlers;
-        private readonly DTE dte;
+        private readonly DTE2 dte;
         private System.Threading.Thread listenerThread;
 
-        public RequestListener(int port, DTE dte)
+        public RequestListener(int port, DTE2 dte)
         {
             this.dte = dte;
             this.httpListener = new HttpListener();
@@ -38,6 +39,11 @@ namespace NetDTE
             get { return this.httpListener.IsListening; }
         }
 
+        /// <summary>
+        /// Gets a value which indicates whether or not the listener thread is running
+        /// </summary>
+        public bool IsRunning { get; private set; }
+
         public void Start()
         {
             if (this.listenerThread != null) return;
@@ -50,6 +56,8 @@ namespace NetDTE
 
         void Listen()
         {
+            this.IsRunning = true;
+
             // Todo: put the port into configuration
             this.handlers.Keys
                 .Select(path => $"http://localhost:{this.Port}{path}/")
@@ -85,6 +93,8 @@ namespace NetDTE
             }
 
             Logger.WriteLine("Stopping listener");
+
+            this.IsRunning = false;
         }
 
         public void Stop()

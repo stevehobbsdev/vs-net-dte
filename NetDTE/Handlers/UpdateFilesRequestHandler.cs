@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Net;
 using EnvDTE;
+using EnvDTE80;
 using Newtonsoft.Json;
 
 namespace NetDTE.Handlers
@@ -10,12 +11,9 @@ namespace NetDTE.Handlers
     [RequestHandler("/project/files")]
     class UpdateFilesRequestHandler : RequestHandler
     {
-        private readonly IEnumerable<Project> nodeProjects;
-
-        public UpdateFilesRequestHandler(DTE dte)
+        public UpdateFilesRequestHandler(DTE2 dte)
             : base(dte)
         {
-            this.nodeProjects = SolutionHelper.FindNodeProjects(dte).ToList();
         }
 
         public override void HandleRequest(HttpListenerContext context)
@@ -31,30 +29,42 @@ namespace NetDTE.Handlers
 
                     if (files.Any())
                     {
+                        var nodeProjects = SolutionHelper.FindNodeProjects(this.DTE).ToList();
+
                         Logger.WriteLine($"Received {files.Count} file/s for processing");
 
                         // Assume for now that all the files being changed are in the same project
-                        var filePath = $"{Path.GetDirectoryName(files.First())}\\";
-                        var project = this.nodeProjects.First(); // Assume for now that there is only one node project in the solution
+                        var filePath = $"{ Path.GetDirectoryName(files.First()) }\\";
+                        var project = nodeProjects.First(); // Assume for now that there is only one node project in the solution
 
-                        files.ForEach(f =>
+                        try
                         {
-                            ProjectItems parent = project.ProjectItems;
-
-                            // If this is a css file, find a sass file with the same name and add it as a
-                            // child of that.
-                            if (Path.GetExtension(f) == ".css")
+                            files.ForEach(f =>
                             {
-                                var sassPath = $"{Path.Combine(Path.GetDirectoryName(f), Path.GetFileNameWithoutExtension(f))}.scss";
-                                var sassProjectItem = MainPackage.AssetCache.Lookup(sassPath);
+                                ProjectItems parent = project.ProjectItems;
 
-                                if (sassProjectItem != null)
-                                    parent = sassProjectItem.ProjectItems;
-                            }
+                                // If this is a css file, find a sass file with the same name and add it as a
+                                // child of that.
+                                if (Path.GetExtension(f) == ".css")
+                                {
+                                    var sassPath = $"{Path.Combine(Path.GetDirectoryName(f), Path.GetFileNameWithoutExtension(f))}.scss";
+                                    var sassProjectItem = MainPackage.AssetCache.Lookup(sassPath);
 
-                            parent.AddFromFile(f);
-                            filesAdded++;
-                        });
+                                    if (sassProjectItem != null)
+                                        parent = sassProjectItem.ProjectItems;
+                                }
+
+                                parent.AddFromFile(f);
+                                filesAdded++;
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.WriteToEventLog(ex);
+                            Logger.WriteLine("** An exception occured when handling files **");
+                            Logger.WriteLine(ex.Message);
+                            Logger.WriteLine();
+                        }
                     }
                 }
             }

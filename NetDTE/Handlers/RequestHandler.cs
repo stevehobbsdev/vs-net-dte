@@ -6,9 +6,9 @@ namespace NetDTE.Handlers
 {
     class RequestHandler
     {
-        protected DTE DTE;
+        protected DTE2 DTE;
 
-        public RequestHandler(DTE dte)
+        public RequestHandler(DTE2 dte)
         {
             this.DTE = dte;            
         }
